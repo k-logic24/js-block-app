@@ -16,7 +16,13 @@ let paddleX = (canvas.width - paddleW) / 2
 let rightPressed = false
 let leftPressed = false
 
-// brock
+// score
+let score = 0
+
+// life
+let lives = 3
+
+// brick
 let brickRowCount = 3
 let brickColCount = 5
 let brickWidth = 75
@@ -30,8 +36,40 @@ const bricks = []
 for (let c = 0; c < brickColCount; c++) {
   bricks[c] = []
   for (let r = 0; r < brickRowCount; r++) {
-    bricks[c][r] = { x: 0, y: 0 }
+    bricks[c][r] = { x: 0, y: 0, status: 1 }
   }
+}
+
+function collisionDetection() {
+  for (let c = 0; c < brickColCount; c++) {
+    for (let r = 0; r < brickRowCount; r++) {
+      let b = bricks[c][r]
+      if (b.status === 1) {
+        if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+          dy = -dy
+          b.status = 0
+          score++
+
+          if (score === brickRowCount * brickColCount) {
+            alert('YOU WIN, CONGRATULATIONS!')
+            document.location.reload()
+          }
+        }
+      }
+    }
+  }
+}
+
+function drawScore() {
+  ctx.font = "16px Arial"
+  ctx.fillStyle = "#0095dd"
+  ctx.fillText(`Score: ${score}`, 8, 20)
+}
+
+function drawLives() {
+  ctx.font = "16px Arial"
+  ctx.fillStyle = "#0095dd"
+  ctx.fillText(`Lives: ${lives}`, canvas.width - 65, 20)
 }
 
 function drawBall() {
@@ -53,16 +91,18 @@ function drawPaddle() {
 function drawBricks() {
   for (let c = 0; c < brickColCount; c++) {
     for (let r = 0; r < brickRowCount; r++) {
-      let brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft
-      let brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop
-      bricks[c][r].x = 0
-      bricks[c][r].y = 0
+      if (bricks[c][r].status === 1) {
+        let brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft
+        let brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop
+        bricks[c][r].x = brickX
+        bricks[c][r].y = brickY
 
-      ctx.beginPath()
-      ctx.rect(brickX, brickY, brickWidth, brickHeight)
-      ctx.fillStyle = '#0095dd'
-      ctx.fill()
-      ctx.closePath()
+        ctx.beginPath()
+        ctx.rect(brickX, brickY, brickWidth, brickHeight)
+        ctx.fillStyle = '#0095dd'
+        ctx.fill()
+        ctx.closePath()
+      }
     }
   }
 }
@@ -72,14 +112,32 @@ function draw() {
   drawBall()
   drawBricks()
   drawPaddle()
+  drawScore()
+  drawLives()
+  collisionDetection()
   // 衝突検知
   // 壁にめり込まないようradiusを考慮
   if (y + dy < ballRadius) {
     dy = -dy
   } else if (y + dy > canvas.height - ballRadius) {
-    alert('GAME OVER')
-    document.location.reload()
-    clearInterval(interval)
+    if (x > paddleX && x < paddleX + paddleW) {
+      if (y = y - paddleH) {
+        dy = -dy
+      }
+    } else {
+      lives--
+
+      if (!lives) {
+        alert('GAME OVER')
+        document.location.reload()
+      } else {
+        x = canvas.width / 2
+        y = canvas.height - 30
+        dx = 3
+        dy = 3
+        paddleX = (canvas.width - paddleW) / 2
+      }
+    }
   }
   if (x + dx > canvas.width - ballRadius | x + dx < ballRadius) {
     dx = -dx
@@ -87,6 +145,8 @@ function draw() {
 
   x += dx
   y += dy
+
+  requestAnimationFrame(draw)
 
   if (rightPressed && paddleX < canvas.width - paddleW) {
     paddleX += 7
@@ -96,10 +156,11 @@ function draw() {
   }
 }
 
-document.addEventListener('keydown', keyDownHandle, false)
-document.addEventListener('keyup', keyUpHandle, false)
+document.addEventListener('keydown', keyDownHandler, false)
+document.addEventListener('keyup', keyUpHandler, false)
+document.addEventListener('mousemove', mouseMoveHandler, false)
 
-function keyDownHandle(e) {
+function keyDownHandler(e) {
   if (e.key === 'Right' || e.key === 'ArrowRight') {
     rightPressed = true
   }
@@ -108,7 +169,7 @@ function keyDownHandle(e) {
   }
 }
 
-function keyUpHandle(e) {
+function keyUpHandler(e) {
   if (e.key === 'Right' || e.key === 'ArrowRight') {
     rightPressed = false
   }
@@ -117,4 +178,11 @@ function keyUpHandle(e) {
   }
 }
 
-const interval = setInterval(draw, 10)
+function mouseMoveHandler(e) {
+  const relativeX = e.clientX - canvas.offsetLeft
+  if (relativeX > 0 && relativeX < canvas.width) {
+    paddleX = relativeX - paddleW / 2
+  }
+}
+
+draw()
